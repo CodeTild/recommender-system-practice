@@ -74,8 +74,8 @@ U_red, Sigma_red, VT_red = svdcompute(mat, k)
 # know we approximate  the binary user-item matrix by its K term SVD
 USVT = U_red*(Sigma_red*VT_red)#np.dot(U_reds, VT_red)
 
-th=5
-# apply theresholding to abtain a binary matrix 
+th=.5
+# theresholding to abtain a binary matrix 
 usermedia_df_es= USVT >=th*np.ones(USVT.shape)
 error_sum =0
 size=usermedia_df_es.shape
@@ -95,19 +95,19 @@ for user in user_id_vec:#(new_df['user_id'].values):
 error_sum =0
 for user in test_data['user_id'].values:
 	seq=test_data[test_data['user_id'] == user]['media_id']
+	user_index = np.where(user_id_vec==user)[0][0]
 	for media in seq:
 		med_index= np.where(media_id_vec==media)[0][0]
-		user_index = np.where(user_id_vec==user)[0][0]
-		seq=train_data[train_data['user_id'] == user]['media_id']
-		if (usermedia_df_es[user_index,med_index]!=usermedia_for_test.loc[user,item]):
+		if (usermedia_df_es[user_index,med_index]!=usermedia_for_test.loc[user,media]):
 			error_sum +=1
 		
 print (error_sum/len(test_data))
 #estimating error based on test data +train data
 error_sum2=0
-for user in user_id_vec:
-	for media in media_id_vec:
-		if (usermedia_df_es[user_index,med_index]!=usermedia_for_test.loc[user,item]):
+for i, user in enumerate(user_id_vec):
+	for j, media in enumerate(media_id_vec):
+				
+		if (usermedia_df_es[i,j]!=usermedia_for_test.loc[user,media]):
 			error_sum2 +=1	
 
 print (error_sum2/(len(test_data)+len (train_data)))
