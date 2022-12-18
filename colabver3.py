@@ -93,15 +93,26 @@ for user in user_id_vec:#(new_df['user_id'].values):
 
 #estimating error based on test data
 error_sum =0
-for user in test_data['user_id'].values:
+media_id_test= test_data['media_id'].unique()
+user_id_test = test_data['user_id'].unique()
+for user in user_id_test:#test_data['user_id'].values:
 	seq=test_data[test_data['user_id'] == user]['media_id']
 	user_index = np.where(user_id_vec==user)[0][0]
 	for media in seq:
 		med_index= np.where(media_id_vec==media)[0][0]
 		if (usermedia_df_es[user_index,med_index]!=usermedia_for_test.loc[user,media]):
 			error_sum +=1
+error_sum_prim =0
+for user, media in zip (test_data['user_id'].values, test_data['media_id'].values):
+	user_index = np.where(user_id_vec==user)[0][0]
+	med_index= np.where(media_id_vec==media)[0][0]
+	if (not usermedia_df_es[user_index,med_index]):
+			error_sum_prim +=1
+
+			
 		
 print (error_sum/len(test_data))
+print (error_sum_prim/len(test_data))
 #estimating error based on test data +train data
 error_sum2=0
 for i, user in enumerate(user_id_vec):
