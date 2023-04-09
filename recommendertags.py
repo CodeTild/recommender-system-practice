@@ -157,14 +157,14 @@ for user in user_id_test_vec:
 	i = usertag_df.index.get_loc(user)
 	sort_index =sorted_index_mat[i]
 	item_liked_before_index = np.nonzero(useritemtrain_df.iloc[i].values)[0] #
-	new_item_liked_index = [ sort_index[i] for i in range (len (sort_index)) if not (sort_index[i] in item_liked_before_index) ]
-	index_list = list(new_item_liked_index[0:n_predict-1])
+	#new_item_liked_index = [ sort_index[i] for i in range (len (sort_index)) if not (sort_index[i] in item_liked_before_index) ]
+	index_list = list(sort_index[0:n_predict-1])
 	useritem_test_row = useritem_test_mat[i]# 
 	useritem_test_nzero_index = set(list(np.nonzero(useritem_test_row)[0]))
-	useritem_test_zero_index = index_total_set -  useritem_test_nzero_index - set(item_liked_before_index) ##might be redandunt
+	useritem_test_zero_index = index_total_set -  useritem_test_nzero_index - set(item_liked_before_index) 
 	topn_hit =0
 	for item_index in useritem_test_nzero_index:
-		random_not_liked=random.choices(list(useritem_test_zero_index), k=100)
+		random_not_liked=random.sample(list(useritem_test_zero_index), k=100)
 		random_not_liked.append(item_index)
 		new_item_liked_filtered = [ind for ind in sort_index if ind in random_not_liked]
 		flag_int =  check_item_topn(item_index, new_item_liked_filtered, topn)
