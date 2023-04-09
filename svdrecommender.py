@@ -1,4 +1,4 @@
-# Import Pandas
+ #Import Pandas
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 import numpy as np
@@ -93,23 +93,21 @@ row = np.zeros(len(item_id_vec))
 recall_at_topn_avg=0
 user_id_test_vec = test_df['user_id'].unique()
 #based on our traing and test spliting and data cleaning section both train df and test df have unique user_id
-#for i,user in enumerate(user_id_vec):
 n_predict =1000
 topn =10
+index_test_row = set([i for i in (range(useritemtest_df.shape[1]))])
+sorted_data_mat_est=np.argsort(-data_mat_est)
 for user in user_id_test_vec:
 	i = useritemtrain_df.index.get_loc(user)
-	i_vector =-data_mat_est[i]
-	sort_index=np.argsort(i_vector)
+	sort_index = sorted_data_mat_est[i]
 	item_liked_before_index = np.nonzero(useritemtrain_df.iloc[i].values)[0] #
-	new_item_liked_index = [ sort_index[i] for i in range (len (sort_index)) if not (sort_index[i] in item_liked_before_index) ]
-	index_list = list(new_item_liked_index[0:n_predict-1])
+	index_list = list(sort_index[0:n_predict-1])
 	useritem_test_row = useritem_test_mat[i]# 
 	useritem_test_nzero_index = set(list(np.nonzero(useritem_test_row)[0]))
-	index_test_row = set([i for i in (range(len(useritem_test_row )))])
-	useritem_test_zero_index = index_test_row -  useritem_test_nzero_index 
+	useritem_test_zero_index = index_test_row -  useritem_test_nzero_index - set(item_liked_before_index)
 	topn_hit =0
 	for item_index in useritem_test_nzero_index:
-		random_not_liked=random.choices(list(useritem_test_zero_index), k=100)
+		random_not_liked=random.sample(list(useritem_test_zero_index), k=100)
 		random_not_liked.append(item_index)
 		new_item_liked_filtered = [ind for ind in index_list if ind in random_not_liked]
 		flag_int =  check_item_topn(item_index, new_item_liked_filtered, topn)
@@ -122,28 +120,4 @@ for user in user_id_test_vec:
 print("*********************************")
 print ("Recall@",topn,"is :",recall_at_topn_avg/len(user_id_test_vec))	
 				
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
