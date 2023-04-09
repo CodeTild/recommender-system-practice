@@ -1,9 +1,11 @@
-
 import random
 from sklearn.metrics.pairwise import cosine_similarity
 import collections
 import pandas as pd
 import numpy as np
+from utilities.recommenders import *
+
+
 data_tags_df = pd.read_csv('datafiletags.csv', low_memory=False)
 
 #data_tags_df_val = data_tags_df.assign(value= [1]*len(data_tags_df))
@@ -47,23 +49,13 @@ if (len (items)>0 ):
 		
 #################################################################################################################
 #################################################################################################################
-train_data_list =[]
-test_data_list= []
-train_data_dict={}
-test_data_dict={}
-data_group = data_tags_df_copy.groupby('user_id')
-for block in data_group:
-	block_sorted = block[1].sort_values('liked_date')	
-	n = len(block_sorted)
-	n_test = int(n/4)
-	n_train = n-n_test
-	if int(n/5)>0: #just keep users that have 5 like items
-		train_data_list.append( block[1].iloc[:n_train])
-		test_data_list.append( block[1].iloc[n_train:n])
-		train_data_dict[block[0]]= list(block[1].iloc[:n_train]['item_id']) #?
-		test_data_dict[block[0]]= list (block[1].iloc[n_train:n]['item_id']) #?
-train_df = pd.concat(train_data_list)
-test_df = pd.concat(test_data_list)
+grouping_col_str='user_id'
+sorting_col_str='liked_date'
+
+train_df, test_df = timeTestTrainsplit(data_tags_df_copy, grouping_col_str, sorting_col_str, 5)
+#print (train_df)
+#print (test_df)
+
 ###############################################################################################################################
 user_id_vec_train = train_df['user_id'].unique()
 user_id_vec_test = test_df['user_id'].unique()
@@ -81,35 +73,15 @@ for user in user_id_vec_train:
 			if tag not in removed_keys:
 				usertag_df.loc[user,tag]=usertag_df.loc[user,tag]+tag_count
 #################################################################################################
-#Can we find a user without any labe?
-sum_row_users = usertag_df.sum(axis='columns')
-users=sum_row_users[sum_row_users==0]
-users_index = list(users.index)
+
 usertag_mat = usertag_df.to_numpy()
 itemtag_mat = itemtag_df.to_numpy()
 ##############################################################
 
-size = itemtag_mat.shape
-sum_rows= np.sum(itemtag_mat, axis = 1, keepdims = True)
-sum_mat = np.hstack([sum_rows]*size[1])
-tf_mat= np.divide(itemtag_mat,sum_mat)
-n_nzeros = np.count_nonzero(itemtag_mat, axis=0)
-sum_mat = np.vstack([n_nzeros]*size[0])
-idf_mat = np.log10(np.divide( size[0]*np.ones(itemtag_mat.shape), 1+sum_mat))
-tf_idf_mat_item= np.multiply(tf_mat,idf_mat)
-
-##############################################################
-size = usertag_mat.shape
-sum_rows= np.sum(usertag_mat, axis = 1, keepdims = True)
-sum_mat = np.hstack([sum_rows]*size[1])
-tf_mat= np.divide(usertag_mat,sum_mat)
-n_nzeros = np.count_nonzero(usertag_mat, axis=0)
-sum_mat = np.vstack([n_nzeros]*size[0])
-idf_mat = np.log10(np.divide( size[0]*np.ones(usertag_mat.shape), 1+sum_mat))
-tf_idf_mat_user= np.multiply(tf_mat,idf_mat)
+tf_idf_mat_item=  tf_idf_mat(itemtag_mat)    
+tf_idf_mat_user=  tf_idf_mat(usertag_mat)
 similarity_mat = cosine_similarity(tf_idf_mat_user,tf_idf_mat_item)
-sorted_index_mat = np.argsort(-similarity_mat)
-
+predicted_mat = np.argsort(-similarity_mat)
 
 ##################################################################
 #producing user-item-data frame train and test 
@@ -124,54 +96,21 @@ label_cols = [item  for item  in item_id_vec_t]
 label_rows = [user for user in user_id_vec_train]
 useritemtrain_df = pd.DataFrame(data, label_rows, label_cols)
 #pd.pivot pivot_table
-#
 for user, item  in zip(train_df['user_id'], train_df['item_id']):	
 	useritemtrain_df.loc[user,item]=useritemtrain_df.loc[user,item]+1
+
 vals = [0  for i in range(len(item_id_vec_t))]
 data = [ vals for i in range(len(user_id_vec_train))]
 label_cols = [item  for item  in item_id_vec_t]
 label_rows = [user for user in user_id_vec_train]
 useritemtest_df = pd.DataFrame(data, label_rows, label_cols)
-
-
 for user, item  in zip(test_df['user_id'], test_df['item_id']):	
 	useritemtest_df.loc[user,item]=useritemtest_df.loc[user,item]+1
 ####################################################################
-useritem_test_mat= useritemtest_df.to_numpy()	
+useritemtest_mat= useritemtest_df.to_numpy()	
 useritemtrain_mat = useritemtrain_df.to_numpy()
-useritem_pred_mat= np.zeros(useritemtest_df.shape)
-n =10
-row = np.zeros(len(item_id_vec))
-recall_at_topn_avg=0
-user_id_test_vec = test_df['user_id'].unique()
-index_total_set= set([i for i in range (len(item_id_vec_t))])
-#based on our traing and test spliting and data cleaning section both train df and test df have same unique user_id
-
-n_predict =1000
-topn =10
-def check_item_topn(item_index, new_item_liked_filtered, topn):
-	return int (item_index in new_item_liked_filtered[0:topn-1])
-for user in user_id_test_vec:
-	i = usertag_df.index.get_loc(user)
-	sort_index =sorted_index_mat[i]
-	item_liked_before_index = np.nonzero(useritemtrain_df.iloc[i].values)[0] #
-	#new_item_liked_index = [ sort_index[i] for i in range (len (sort_index)) if not (sort_index[i] in item_liked_before_index) ]
-	index_list = list(sort_index[0:n_predict-1])
-	useritem_test_row = useritem_test_mat[i]# 
-	useritem_test_nzero_index = set(list(np.nonzero(useritem_test_row)[0]))
-	useritem_test_zero_index = index_total_set -  useritem_test_nzero_index - set(item_liked_before_index) 
-	topn_hit =0
-	for item_index in useritem_test_nzero_index:
-		random_not_liked=random.sample(list(useritem_test_zero_index), k=100)
-		random_not_liked.append(item_index)
-		new_item_liked_filtered = [ind for ind in sort_index if ind in random_not_liked]
-		flag_int =  check_item_topn(item_index, new_item_liked_filtered, topn)
-		topn_hit = topn_hit+flag_int
-	recall_at_topn = topn_hit/float(len(useritem_test_nzero_index))
-	recall_at_topn_avg = recall_at_topn+recall_at_topn_avg
-
-print("*********************************")
-print ("Recall@",topn,"is :",recall_at_topn_avg/len(user_id_test_vec))	
+evaluation = Evaluation(useritemtrain_mat, useritemtest_mat, predicted_mat)
+print(evaluation.recallat_user_block())
 
 
 

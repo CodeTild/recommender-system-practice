@@ -47,6 +47,17 @@ def data_frame_manuplation(item_id_vec, user_id_vec , train_df, test_df ):
 		for user, item in zip (block[1]['user_id'], block[1]['item_id']):
 			useritemtest_df.loc[user, item] = useritemtest_df.loc[user,item]+1
 	return useritemtrain_df, useritemtest_df
+	
+def tf_idf_mat(xxxtag_mat):
+	size = xxxtag_mat.shape
+	sum_rows= np.sum(xxxtag_mat, axis = 1, keepdims = True)
+	sum_mat = np.hstack([sum_rows]*size[1])
+	tf_mat= np.divide(xxxtag_mat,sum_mat)
+	n_nzeros = np.count_nonzero(xxxtag_mat, axis=0)
+	sum_mat = np.vstack([n_nzeros]*size[0])
+	idf_mat = np.log10(np.divide( size[0]*np.ones(xxxtag_mat.shape), 1+sum_mat))
+	tf_idf_mat= np.multiply(tf_mat,idf_mat)
+	return tf_idf_mat
 
 class Evaluation:
 	def __init__(self, useritemtrain_mat, useritemtest_mat, predicted_mat):
