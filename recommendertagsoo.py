@@ -1,5 +1,4 @@
 import random
-from sklearn.metrics.pairwise import cosine_similarity
 import collections
 import pandas as pd
 import numpy as np
@@ -47,15 +46,10 @@ if (len (items)>0 ):
 	itemtag_df.drop(items_index,axis=0,inplace=True)	
 	[data_tags_df_copy.drop(data_tags_df_copy[data_tags_df_copy.item_id == item].index, inplace=True) for item in items_index]
 		
-#################################################################################################################
-#################################################################################################################
+##############################################################################################
 grouping_col_str='user_id'
 sorting_col_str='liked_date'
-
 train_df, test_df = timeTestTrainsplit(data_tags_df_copy, grouping_col_str, sorting_col_str, 5)
-#print (train_df)
-#print (test_df)
-
 ###############################################################################################################################
 user_id_vec_train = train_df['user_id'].unique()
 user_id_vec_test = test_df['user_id'].unique()
@@ -73,16 +67,8 @@ for user in user_id_vec_train:
 			if tag not in removed_keys:
 				usertag_df.loc[user,tag]=usertag_df.loc[user,tag]+tag_count
 #################################################################################################
-
 usertag_mat = usertag_df.to_numpy()
 itemtag_mat = itemtag_df.to_numpy()
-##############################################################
-
-tf_idf_mat_item=  tf_idf_mat(itemtag_mat)    
-tf_idf_mat_user=  tf_idf_mat(usertag_mat)
-similarity_mat = cosine_similarity(tf_idf_mat_user,tf_idf_mat_item)
-predicted_mat = np.argsort(-similarity_mat)
-
 ##################################################################
 #producing user-item-data frame train and test 
 user_id_vec_train = train_df['user_id'].unique()
@@ -109,9 +95,12 @@ for user, item  in zip(test_df['user_id'], test_df['item_id']):
 ####################################################################
 useritemtest_mat= useritemtest_df.to_numpy()	
 useritemtrain_mat = useritemtrain_df.to_numpy()
+cf = ContentFiltering(usertag_mat, itemtag_mat, useritemtrain_mat)
+predicted_mat = cf.recommendation_userblock() 
 evaluation = Evaluation(useritemtrain_mat, useritemtest_mat, predicted_mat)
 print(evaluation.recallat_user_block())
-
+user_str = user_id_vec_train[0]
+print ( "recommended items for", user_str, "are" , cf.recommendation_for_user(user_str, user_id_vec_train, item_id_vec_t,5))
 
 
 

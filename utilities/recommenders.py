@@ -8,6 +8,7 @@ from sparsesvd import sparsesvd
 from scipy.sparse import csr_matrix
 import scipy.sparse
 import random
+from sklearn.metrics.pairwise import cosine_similarity
 
 def timeTestTrainsplit( df, grouping_col_name, sorting_col_name, n_t): # 1 test and n-1 train
 	train_data_list =[]
@@ -48,17 +49,41 @@ def data_frame_manuplation(item_id_vec, user_id_vec , train_df, test_df ):
 			useritemtest_df.loc[user, item] = useritemtest_df.loc[user,item]+1
 	return useritemtrain_df, useritemtest_df
 	
-def tf_idf_mat(xxxtag_mat):
-	size = xxxtag_mat.shape
-	sum_rows= np.sum(xxxtag_mat, axis = 1, keepdims = True)
-	sum_mat = np.hstack([sum_rows]*size[1])
-	tf_mat= np.divide(xxxtag_mat,sum_mat)
-	n_nzeros = np.count_nonzero(xxxtag_mat, axis=0)
-	sum_mat = np.vstack([n_nzeros]*size[0])
-	idf_mat = np.log10(np.divide( size[0]*np.ones(xxxtag_mat.shape), 1+sum_mat))
-	tf_idf_mat= np.multiply(tf_mat,idf_mat)
-	return tf_idf_mat
-
+class ContentFiltering:
+	def __init__(self, usertag_mat, itemtag_mat,useritemtrain_mat):
+		self.itemtag_mat = itemtag_mat
+		self.usertag_mat = usertag_mat
+		self.useritemtrain_mat = useritemtrain_mat
+		
+	def tf_idf_mat(self, xxxtag_mat):
+		size = xxxtag_mat.shape
+		sum_rows= np.sum(xxxtag_mat, axis = 1, keepdims = True)
+		sum_mat = np.hstack([sum_rows]*size[1])
+		tf_mat= np.divide(xxxtag_mat,sum_mat)
+		n_nzeros = np.count_nonzero(xxxtag_mat, axis=0)
+		sum_mat = np.vstack([n_nzeros]*size[0])
+		idf_mat = np.log10(np.divide( size[0]*np.ones(xxxtag_mat.shape), 1+sum_mat))
+		tf_idf_mat= np.multiply(tf_mat,idf_mat)
+		return tf_idf_mat
+	
+	def recommendation_userblock(self):
+		tf_idf_mat_item= self.tf_idf_mat(self.itemtag_mat)    
+		tf_idf_mat_user= self.tf_idf_mat(self.usertag_mat)
+		similarity_mat = cosine_similarity(tf_idf_mat_user,tf_idf_mat_item)
+		predicted_mat = np.argsort(-similarity_mat)
+		return predicted_mat
+		
+	def recommendation_for_user(self, user_str, user_id_vec, item_id_vec,n_predict) :
+		i = list (user_id_vec).index(user_str)
+		predicted_mat = self.recommendation_userblock()
+		predicted_vec = predicted_mat[i]
+		item_liked_before_index = np.nonzero(self.useritemtrain_mat[i])[0]
+		predicted_vec_filtered = [item for item in predicted_vec if item not in item_liked_before_index]
+		recommended_items = [item_id_vec[ind] for ind in predicted_vec_filtered] 
+		return recommended_items[0:n_predict-1]
+		
+		
+		
 class Evaluation:
 	def __init__(self, useritemtrain_mat, useritemtest_mat, predicted_mat):
 		self.useritemtest_mat = useritemtest_mat
@@ -106,11 +131,14 @@ class SVDrecommender:
 		user_item_est_mat=USVT.toarray()
 		self.predicted_mat =np.argsort(-user_item_est_mat)
 		return self.predicted_mat#, U, S, VT
-	def svd_recommender_user (self, user_id,user_id_vec,item_id_vec, n_predict):
+	def svd_recommender_user (self, user_id,user_id_vec,item_id_vec,n_predict):
 		i=list(user_id_vec).index(user_id)
-		index_list= self.predicted_mat[i,0:n_predict-1]
-		recommended_items = [item_id_vec[ind] for ind in index_list]
-		return recommended_items
+		item_liked_before_index = np.nonzero(self.user_item_mat[i])[0]
+		predicted_mat= self.svd_recommender_userblock()
+		predicted_mat_vec = predicted_mat[i]
+		predicted_mat_filtered = [item for item in predicted_mat_vec  if item not in item_liked_before_index ]
+		recommended_items = [item_id_vec[ind] for ind in predicted_mat_filtered]
+		return recommended_items[0:n_predict-1]
 			
 		
 		

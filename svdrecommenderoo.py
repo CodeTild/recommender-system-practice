@@ -1,14 +1,6 @@
- #Import Pandas
 import pandas as pd
-#from sklearn.neighbors import NearestNeighbors
-#import numpy as np
-#from numpy import unique
-#from scipy.linalg import svd
-#from scipy.sparse.linalg import *
-#from sparsesvd import sparsesvd 
 from scipy.sparse import csr_matrix
 import scipy.sparse
-#from utilities.recommenders import timeTestTrainsplit, data_frame_manuplation, SVDrecommender, Evaluation
 from utilities.recommenders import *
 
 
@@ -40,6 +32,6 @@ useritemtest_mat= useritemtest_df.to_numpy()
 evaluation = Evaluation (useritemtrain_mat, useritemtest_mat, predicted_mat )
 user_str = user_id_vec[0]
 
-print (model.svd_recommender_user(user_str,user_id_vec,item_id_vec,5))
+print (model.svd_recommender_user(user_str,user_id_vec,item_id_vec, 5))
 print (evaluation.recallat_user_block())
 
